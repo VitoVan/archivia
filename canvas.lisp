@@ -1,4 +1,5 @@
 (in-package #:calm)
+
 (u:load-from-app "src/config.lisp")
 (u:load-from-app "src/utils.lisp")
 (u:load-from-app "src/file-renderer.lisp")
@@ -11,7 +12,7 @@
           (c:move-to x *margin-top*)
           (c:move-to x (- *margin-top* (- *cursor-margin-bottom* current-margin-bottom)))))
 
-  (u:with-cairo-state
+  (c:with-state
     (c:rel-move-to *item-margin-left* *item-margin-top*)
     (loop for dir in dir-list
           for y = (nth-value 1 (c:get-current-point))
@@ -20,7 +21,7 @@
              (when
                  (and (>= y *item-margin-top*)
                       (<= y (- *calm-window-height* *margin-top* *margin-bottom* *item-margin-top* *item-margin-bottom*)))
-               (u:show-markup
+               (c:show-markup
                 (if (string= highlight (get-pathname-str dir))
                     (str:concat
                      "<span fgcolor='#2052BB' weight='SemiBold'>"
@@ -35,9 +36,9 @@
 
 
 (defun draw-column-bg (x width &key bg-color)
-  (u:with-cairo-state
+  (c:with-state
     (apply #'c:set-source-rgb (or bg-color *column-bg-color*))
-    (u:rrectangle x *margin-top* width (- *calm-window-height* *margin-bottom* *margin-top*))
+    (c:rrectangle x *margin-top* width (- *calm-window-height* *margin-bottom* *margin-top*))
     (c:fill-path)))
 
 
@@ -47,13 +48,13 @@
   (let* ((filename-str (get-pathname-str filename)))
     (c:set-source-rgb 1 1 1)
     (multiple-value-bind (layout w h)
-        (u:create-markup-layout
+        (c:markup->layout
          (format nil "<span bgcolor='~A'> ~A </span>" *filename-bg-color* filename-str)
          :width -1 :height -1 :align :center)
       (c:move-to
        (- *calm-window-width* *margin-right* w)
        (+ *margin-top*))
-      (u:show-layout layout)
+      (c:show-layout layout)
 
 
 
@@ -69,7 +70,7 @@
       ;; draw file content
       (apply #'c:set-source-rgb *fg-color*)
       (c:move-to (+ x *item-margin-left*) (+ *margin-top* *item-margin-top* h))
-      (u:show-markup
+      (c:show-markup
        (get-markup filename)
        :width (- width *item-margin-right* *margin-right*)
        :height
@@ -77,9 +78,9 @@
           *margin-top* *margin-bottom* *item-margin-top* *item-margin-bottom* *calm-default-font-size*)))))
 
 (defun draw-searching ()
-  (u:with-cairo-state
+  (c:with-state
     (apply #'c:set-source-rgb *search-bg-color*)
-    (u:rrectangle
+    (c:rrectangle
      *margin-left*
      *search-y*
      (- *calm-window-width* *margin-left* *margin-right*)
@@ -87,7 +88,7 @@
      :radius 10)
     (c:fill-path)
     (c:move-to *margin-left* *search-y*)
-    (u:show-markup (format nil "<span fgcolor='#eafdff' weight='bold'> Search: ~A</span> " (or *search-string* ""))))
+    (c:show-markup (format nil "<span fgcolor='#eafdff' weight='bold'> Search: ~A</span> " (or *search-string* ""))))
   )
 
 (defun draw ()

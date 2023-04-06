@@ -1,7 +1,7 @@
 (in-package #:calm)
 
 (defun draw-png (filename x y width height)
-  (u:with-cairo-state
+  (c:with-state
     (let* ((surface (c:image-surface-create-from-png filename))
            (img-width (c:image-surface-get-width surface))
            (z (/ width img-width)))

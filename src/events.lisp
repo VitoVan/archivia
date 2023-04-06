@@ -56,6 +56,8 @@
        (setf *current-selected* (first *children*))))
     ((and (eq key :SCANCODE-O) (not *searching*))
      (os-open *current-selected*))
+    ((and (eq key :SCANCODE-F) (not *searching*))
+     (uiop:run-program (str:concat "open -a ForkLift " (uiop:native-namestring *current-selected*))))
     ;;
     ;; search
     ;;

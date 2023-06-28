@@ -38,6 +38,7 @@
 (defun draw-column-bg (x width &key bg-color)
   (c:with-state
     (apply #'c:set-source-rgb (or bg-color *column-bg-color*))
+    ;; (c:rectangle x 0 width (- *calm-window-height* 0 0))
     (c:rrectangle x *margin-top* width (- *calm-window-height* *margin-bottom* *margin-top*))
     (c:fill-path)))
 
@@ -66,18 +67,37 @@
                   (- width *item-margin-right* *margin-right*)
                   (- *calm-window-height* *margin-top* *item-margin-top* *margin-bottom* *item-margin-bottom* h 10))
         (return-from draw-file))
-
       ;; draw file content
       (apply #'c:set-source-rgb *fg-color*)
-      (c:move-to (+ x *item-margin-left*) (+ *margin-top* *item-margin-top* h))
+      (c:move-to
+       (+ x *item-margin-left*)
+       (+ *margin-top* *item-margin-top* h
+          ;; *file-viewer-scroll*
+          ))
       (c:show-markup
-       (get-markup filename)
+       (let* ((markup-lines (str:lines (if (or (sdl2:keyboard-state-p :scancode-k) (sdl2:keyboard-state-p :scancode-j)) (get-markup-other-thread filename) (get-markup filename))))
+             (markup-line-count (length markup-lines)))
+         (cond
+           ((< markup-line-count 20) (setf *file-viewer-scroll* 0))
+           ((>= *file-viewer-scroll* (- markup-line-count 10))
+            (setf *file-viewer-scroll* (max (- markup-line-count 10) 0)))
+           ((< *file-viewer-scroll* 0)
+            (setf *file-viewer-scroll* 0)))
+         (str:concat
+          (if (> *file-viewer-scroll* 0) "<tt>" "")
+          (str:unlines (subseq markup-lines *file-viewer-scroll*))))
        :width (- width *item-margin-right* *margin-right*)
-       :height
-       (- *calm-window-height*
-          *margin-top* *margin-bottom* *item-margin-top* *item-margin-bottom* *calm-default-font-size*)))))
+       :height (- *calm-window-height*
+                  *margin-top*
+                  *margin-bottom*
+                  *item-margin-top*
+                  *item-margin-bottom*
+                  *calm-default-font-size*
+                  ;; *file-viewer-scroll*
+                  ))
+      )))
 
-(defun draw-searching ()
+(defun draw-minibar ()
   (c:with-state
     (apply #'c:set-source-rgb *search-bg-color*)
     (c:rrectangle
@@ -88,18 +108,29 @@
      :radius 10)
     (c:fill-path)
     (c:move-to *margin-left* *search-y*)
-    (c:show-markup (format nil "<span fgcolor='#eafdff' weight='bold'> Search: ~A</span> " (or *search-string* ""))))
+    (c:show-markup
+     (format nil
+             "<span fgcolor='#eafdff' weight='bold'> ~A: ~A</span> "
+             (if *searching* "Search" "Goto")
+             (or *minibar-string* ""))))
   )
 
 (defun draw ()
   (unless *current-selected*
     (setf *current-selected* (uiop:getcwd)))
 
-  (when (and *searching* *siblings* (not (str:emptyp *search-string*)))
-    (let ((matched
-            (find *search-string* *siblings* :test #'(lambda (x y) (str:containsp (str:downcase x) (str:downcase (get-pathname-str y)))))))
-      (when matched
-        (setf *current-selected* matched))))
+  (when (and *minibar-typing* *siblings* (not (str:emptyp *minibar-string*)))
+    (cond
+      (*searching*
+       (let ((matched
+               (find *minibar-string* *siblings* :test #'(lambda (x y) (str:containsp (str:downcase x) (str:downcase (get-pathname-str y)))))))
+         (when matched
+           (setf *current-selected* matched))))
+      (*going*
+       (when (probe-file *minibar-string*)
+         (setf *current-selected* (probe-file *minibar-string*))))
+      (t (format t "just typing...~A~%" *minibar-string*)))
+    )
 
   (apply #'c:set-source-rgb *bg-color*)
   (c:paint)
@@ -143,6 +174,8 @@
     (if children
         (draw-list children *children-x* *children-width*)
         (when (not (uiop:directory-pathname-p *current-selected*))
-          (draw-file *current-selected* *children-x* *children-width*))))
+          (draw-file *current-selected* *children-x* *children-width*)
+          ))
+    )
 
-  (when *searching* (draw-searching)))
+  (when *minibar-typing* (draw-minibar)))

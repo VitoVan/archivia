@@ -39,8 +39,11 @@
 
 
 (defparameter *current-selected* nil)
+(defparameter *file-encoding-list* '(:utf-8 :eucjp :gbk))
+(defparameter *file-encoding-index* 0)
+(defparameter *file-viewer-scroll* 0)
 (defparameter *file-markup-cache* nil)
-(defparameter *file-markup-max-cache* 10)
+(defparameter *file-markup-max-cache* 42)
 (defparameter *cursor-margin-bottom* 100)
 (defparameter *margin-left* 10)
 (defparameter *margin-right* 10)
@@ -63,6 +66,7 @@
 ;; (defparameter *column-bg-color* (list (/ 52 255) (/ 101 255) (/ 164 255)))
 ;; (defparameter *column-bg-color* '(0 0.35 0.59))
 (defparameter *column-bg-color* (list (/ 248 255) (/ 248 255) (/ 248 255)))
+;; (defparameter *column-bg-color* '(0.94 0.87 0.47))
 ;; (defparameter *file-bg-color* (list (/ 212 255) (/ 209 255) (/ 215 255)))
 ;; (defparameter *file-bg-color* (list (/ 248 255) (/ 248 255) (/ 248 255)))
 ;; (defparameter *file-fg-color* (list 0 0 0))
@@ -86,9 +90,13 @@
 (defparameter *children-width* nil)
 
 (setf *calm-default-font-family* "Open Sans")
+;; (setf *calm-default-font-family* "Monaco")
 
-(defparameter *searching* nil)
-(defparameter *search-string* nil)
+(defparameter *searching* nil "if the user has pressed `/' to search in current list")
+(defparameter *going* nil "if the user has pressed `g' to go to a PATH")
+(defparameter *executing* nil "if the use has pressed `x' to execute a command on the current file or dir")
+(defparameter *minibar-typing* nil)
+(defparameter *minibar-string* nil)
 (defparameter *search-bg-color* (list (/ 5 255) (/ 10 255) (/ 17 255)))
 (defparameter *search-height* 20)
 (defparameter *search-y* nil)

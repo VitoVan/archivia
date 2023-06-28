@@ -22,31 +22,43 @@
     #+win32
     (str:concat "explorer " (uiop:native-namestring pathname)))))
 
+(defun os-exec (command)
+  (uiop:with-current-directory ((get-parent *current-selected*))
+    (uiop:run-program command)))
+
 (defun get-file (filename)
-  (or
-   (ignore-errors
-    (str:unlines
-     (with-open-file (stream filename)
-       (loop for line = (read-line stream nil)
-             for i = 1 then (incf i)
-             while (and line (< i *file-preview-lines*))
-             collect line))))
-   "Empty or invalid text file."))
+  (cond
+    ((> (/ (sb-posix:stat-size (sb-posix:stat *current-selected*)) 1024 1024) 2) "File is bigger than 2 MB, refuse to read.")
+    (t (or
+        (ignore-errors (str:from-file filename :external-format (nth *file-encoding-index* *file-encoding-list*)))
+        "Empty or invalid text file."))))
+
+(defun get-markup-cache (filename)
+  (when *file-markup-cache*
+    (cdr (assoc filename *file-markup-cache*))))
 
 (defun get-markup (filename)
-  (let* ((markup-cache
-           (when *file-markup-cache* (cdr (assoc filename *file-markup-cache*))))
-        (markup
-          (or
-           markup-cache
-           (with-input-from-string (s (get-file filename))
-             (uiop:run-program
-              (format nil "pygmentize -O style=xcode -f pango -l ~A"
-                      (uiop:run-program (str:concat "pygmentize -N \"" (str:replace-all "#" "" (get-pathname-str filename)) "\"")
-                                        :output 'string))
-              :input s :output 'string)))))
+  (let* ((markup-cache (get-markup-cache filename))
+         (markup
+           (or
+            markup-cache
+
+            (with-input-from-string (s (get-file filename))
+              (uiop:run-program
+               (format nil "pygmentize -O style=xcode -f pango -l ~A"
+                       (uiop:run-program
+                        (str:concat "pygmentize -N \"" (str:replace-all "#" "" (get-pathname-str filename)) "\"")
+                        :output 'string))
+               :input s :output 'string))
+            
+            )))
     (unless markup-cache
       (setf *file-markup-cache* (acons filename markup *file-markup-cache*)))
+    markup))
+
+(defun get-markup-other-thread (filename)
+  (let ((markup (get-markup-cache filename)))
+    (bt:make-thread (lambda () (get-markup filename)))
     markup))
 
 (defun pre-load-child-markup (current)
